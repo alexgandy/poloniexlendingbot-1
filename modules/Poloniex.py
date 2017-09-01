@@ -80,10 +80,10 @@ class Poloniex(ExchangeApi):
             req = {}
 
         def _read_response(resp):
-            data = json.loads(resp.read())
-            if 'error' in data:
-                raise ApiError(data['error'])
-            return data
+            resp_data = json.loads(resp.read())
+            if 'error' in resp_data:
+                raise ApiError(resp_data['error'])
+            return resp_data
 
         try:
             if command == "returnTicker" or command == "return24hVolume":
@@ -125,9 +125,10 @@ class Poloniex(ExchangeApi):
                 data = json.loads(raw_polo_response)
                 polo_error_msg = data['error']
             except Exception as ex:
-                if ex.code == 502 or ex.code in range(520, 527, 1):
+                if hasattr(ex, 'code') and (ex.code == 502 or ex.code in range(520, 527, 1)):
                     # 502 and 520-526 Bad Gateway so response is likely HTML from Cloudflare
-                    polo_error_msg = ''
+                    polo_error_msg = 'API Error ' + str(ex.code) + \
+                                     ': The web server reported a bad gateway or gateway timeout error.'
                 else:
                     polo_error_msg = raw_polo_response
             ex.message = ex.message if ex.message else str(ex)
