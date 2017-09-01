@@ -18,6 +18,9 @@ class Bitfinex(ExchangeApi):
         super(Bitfinex, self).__init__(cfg, log)
         self.cfg = cfg
         self.log = log
+        self.lock = threading.RLock()
+        self.req_per_min = 60
+        self.req_time_log = RingBuffer(self.req_per_min)
         self.url = 'https://api.bitfinex.com'
         self.key = self.cfg.get("API", "apikey", None)
         self.secret = self.cfg.get("API", "secret", None)
@@ -29,9 +32,6 @@ class Bitfinex(ExchangeApi):
         self.timeout = int(self.cfg.get("BOT", "timeout", 30, 1, 180))
         # Initialize usedCurrencies
         _ = self.return_available_account_balances("lending")
-        self.req_per_min = 60
-        self.req_time_log = RingBuffer(self.req_per_min)
-        self.lock = threading.RLock()
 
     @property
     def _nonce(self):
