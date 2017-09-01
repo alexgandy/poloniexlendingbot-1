@@ -5,10 +5,12 @@ import base64
 import json
 import requests
 import time
+import threading
 
 from modules.ExchangeApi import ExchangeApi
 from modules.ExchangeApi import ApiError
 from modules.Bitfinex2Poloniex import Bitfinex2Poloniex
+from modules.RingBuffer import RingBuffer
 
 
 class Bitfinex(ExchangeApi):
@@ -27,6 +29,9 @@ class Bitfinex(ExchangeApi):
         self.timeout = int(self.cfg.get("BOT", "timeout", 30, 1, 180))
         # Initialize usedCurrencies
         _ = self.return_available_account_balances("lending")
+        self.req_per_min = 60
+        self.req_time_log = RingBuffer(self.req_per_min)
+        self.lock = threading.RLock()
 
     @property
     def _nonce(self):
@@ -35,6 +40,28 @@ class Bitfinex(ExchangeApi):
         Used in authentication
         """
         return str(int(round(time.time() * 1000)))
+
+    @ExchangeApi.synchronized
+    def limit_request_rate(self):
+        now = time.time()
+        # start checking only when request time log is full
+        if len(self.req_time_log) == self.req_per_min:
+            time_since_oldest_req = now - self.req_time_log[0]
+            # check if oldest request is more than 60sec ago
+            if time_since_oldest_req < 60:
+                # print self.req_time_log.get()
+                # uncomment to debug
+                # print "Waiting %s sec to keep api request rate" % str(60 - time_since_oldest_req)
+                # print "Req: %d  60th Req: %d  Diff: %f sec" %(now, self.req_time_log[0], time_since_oldest_req)
+                self.req_time_log.append(now + 60 - time_since_oldest_req)
+                time.sleep(60 - time_since_oldest_req)
+                return
+                # uncomment to debug
+                # else:
+                #     print self.req_time_log.get()
+                #     print "Req: %d  6th Req: %d  Diff: %f sec" % (now, self.req_time_log[0], time_since_oldest_req)
+        # append current request time to the log, pushing out the 60th request time before it
+        self.req_time_log.append(now)
 
     def _sign_payload(self, payload):
         j = json.dumps(payload)
@@ -48,8 +75,12 @@ class Bitfinex(ExchangeApi):
             "X-BFX-PAYLOAD": data
         }
 
+    @ExchangeApi.synchronized
     def _request(self, method, request, payload=None, verify=True):
         try:
+            # keep the 60 request per minute limit
+            self.limit_request_rate()
+
             r = {}
             url = '{}{}'.format(self.url, request)
             if method == 'get':

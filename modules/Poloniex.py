@@ -28,16 +28,6 @@ def post_process(before):
     return after
 
 
-def synchronized(method):
-    """ Work with instance method only !!! """
-
-    def new_method(self, *arg, **kws):
-        with self.lock:
-            return method(self, *arg, **kws)
-
-    return new_method
-
-
 class Poloniex(ExchangeApi):
     def __init__(self, cfg, log):
         super(Poloniex, self).__init__(cfg, log)
@@ -50,7 +40,7 @@ class Poloniex(ExchangeApi):
         self.lock = threading.RLock()
         socket.setdefaulttimeout(int(Config.get("BOT", "timeout", 30, 1, 180)))
 
-    @synchronized
+    @ExchangeApi.synchronized
     def limit_request_rate(self):
         now = time.time()
         # start checking only when request time log is full
@@ -72,7 +62,7 @@ class Poloniex(ExchangeApi):
         # append current request time to the log, pushing out the 6th request time before it
         self.req_time_log.append(now)
 
-    @synchronized
+    @ExchangeApi.synchronized
     def api_query(self, command, req=None):
         # keep the 6 request per sec limit
         self.limit_request_rate()

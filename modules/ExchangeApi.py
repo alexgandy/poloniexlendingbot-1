@@ -20,6 +20,16 @@ class ExchangeApi(object):
     def create_time_stamp(datestr, formatting="%Y-%m-%d %H:%M:%S"):
         return calendar.timegm(time.strptime(datestr, formatting))
 
+    @staticmethod
+    def synchronized(method):
+        """ Work with instance method only !!! """
+
+        def new_method(self, *arg, **kws):
+            with self.lock:
+                return method(self, *arg, **kws)
+
+        return new_method
+
     @abc.abstractmethod
     def __init__(self, cfg, log):
         """
