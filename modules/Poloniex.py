@@ -40,6 +40,7 @@ def synchronized(method):
 
 class Poloniex(ExchangeApi):
     def __init__(self, cfg, log):
+        super(Poloniex, self).__init__(cfg, log)
         self.cfg = cfg
         self.log = log
         self.APIKey = self.cfg.get("API", "apikey", None)

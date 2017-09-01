@@ -13,6 +13,7 @@ from modules.Bitfinex2Poloniex import Bitfinex2Poloniex
 
 class Bitfinex(ExchangeApi):
     def __init__(self, cfg, log):
+        super(Bitfinex, self).__init__(cfg, log)
         self.cfg = cfg
         self.log = log
         self.url = 'https://api.bitfinex.com'
