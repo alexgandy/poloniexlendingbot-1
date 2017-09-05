@@ -360,7 +360,8 @@ class MarketAnalysis(object):
         :return: Connection object or None
         """
         if db_dir is None:
-            db_path = os.path.join(self.db_dir, '{0}.db'.format(cur))
+            prefix = Config.get_exchange()
+            db_path = os.path.join(self.db_dir, '{0}-{1}.db'.format(prefix, cur))
         try:
             con = lite.connect(db_path)
             return con
