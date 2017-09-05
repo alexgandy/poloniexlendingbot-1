@@ -19,8 +19,10 @@ class Bitfinex(ExchangeApi):
         self.cfg = cfg
         self.log = log
         self.lock = threading.RLock()
-        self.req_per_min = 60
-        self.req_time_log = RingBuffer(self.req_per_min)
+        self.req_per_min = 70 # seconds
+        self.req_period = 15 # seconds
+        self.req_per_period = 60 / (self.req_per_min / self.req_period)
+        self.req_time_log = RingBuffer(self.req_per_period)
         self.url = 'https://api.bitfinex.com'
         self.key = self.cfg.get("API", "apikey", None)
         self.secret = self.cfg.get("API", "secret", None)
@@ -45,21 +47,23 @@ class Bitfinex(ExchangeApi):
     def limit_request_rate(self):
         now = time.time()
         # start checking only when request time log is full
-        if len(self.req_time_log) == self.req_per_min:
+        if len(self.req_time_log) == self.req_per_period:
             time_since_oldest_req = now - self.req_time_log[0]
-            # check if oldest request is more than 60sec ago
-            if time_since_oldest_req < 60:
+            # check if oldest request is more than self.req_period ago
+            if time_since_oldest_req < self.req_period:
                 # print self.req_time_log.get()
                 # uncomment to debug
-                # print "Waiting %s sec to keep api request rate" % str(60 - time_since_oldest_req)
-                # print "Req: %d  60th Req: %d  Diff: %f sec" %(now, self.req_time_log[0], time_since_oldest_req)
-                self.req_time_log.append(now + 60 - time_since_oldest_req)
-                time.sleep(60 - time_since_oldest_req)
+                # print("Waiting {0} sec, {1} to keep api request rate".format(self.req_period - time_since_oldest_req,
+                #       threading.current_thread()))
+                # print("Req:{0} Oldest req:{1} Diff:{2} sec".format(now, self.req_time_log[0], time_since_oldest_req))
+                self.req_time_log.append(now + self.req_period - time_since_oldest_req)
+                time.sleep(self.req_period - time_since_oldest_req)
                 return
-                # uncomment to debug
-                # else:
-                #     print self.req_time_log.get()
-                #     print "Req: %d  6th Req: %d  Diff: %f sec" % (now, self.req_time_log[0], time_since_oldest_req)
+            # uncomment to debug
+            # else:
+            #     print self.req_time_log.get()
+            #     print("Not Waiting {0}".format(threading.current_thread()))
+            #     print("Req:{0} Oldest req:{1}  Diff:{2} sec".format(now, self.req_time_log[0], time_since_oldest_req))
         # append current request time to the log, pushing out the 60th request time before it
         self.req_time_log.append(now)
 
@@ -72,11 +76,13 @@ class Bitfinex(ExchangeApi):
         return {
             "X-BFX-APIKEY": self.key,
             "X-BFX-SIGNATURE": signature,
-            "X-BFX-PAYLOAD": data
+            "X-BFX-PAYLOAD": data,
+            "Connection": "close"
         }
 
     @ExchangeApi.synchronized
     def _request(self, method, request, payload=None, verify=True):
+        now = time.time()
         try:
             # keep the 60 request per minute limit
             self.limit_request_rate()
@@ -84,7 +90,7 @@ class Bitfinex(ExchangeApi):
             r = {}
             url = '{}{}'.format(self.url, request)
             if method == 'get':
-                r = requests.get(url, timeout=self.timeout)
+                r = requests.get(url, timeout=self.timeout, headers={'Connection':'close'})
             else:
                 r = requests.post(url, headers=payload, verify=verify, timeout=self.timeout)
 
