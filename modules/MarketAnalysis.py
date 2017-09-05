@@ -45,7 +45,7 @@ class MarketAnalysis(object):
         self.modules_dir = os.path.dirname(os.path.realpath(__file__))
         self.top_dir = os.path.dirname(self.modules_dir)
         self.db_dir = os.path.join(self.top_dir, 'market_data')
-        self.recorded_levels = int(config.get('MarketAnalysis', 'recorded_levels', 10, 1, 100))
+        self.recorded_levels = int(config.get('MarketAnalysis', 'recorded_levels', 3, 1, 100))
         self.data_tolerance = float(config.get('MarketAnalysis', 'data_tolerance', 15, 10, 90))
         self.ma_debug_log = config.getboolean('MarketAnalysis', 'ma_debug_log')
         self.MACD_long_win_seconds = int(config.get('MarketAnalysis', 'MACD_long_win_seconds',
@@ -174,9 +174,6 @@ class MarketAnalysis(object):
                     db_con.execute(insert_sql)
                 except Exception as ex:
                     self.print_traceback(ex, "Error inserting market data into DB")
-            if Config.get_exchange() == 'BITFINEX':
-                # We don't have a coach for bitfinex, so sleep here
-                time.sleep(5)
 
     def delete_old_data(self, db_con, seconds):
         """
