@@ -19,7 +19,7 @@ class Bitfinex(ExchangeApi):
         self.cfg = cfg
         self.log = log
         self.lock = threading.RLock()
-        self.req_per_min = 70 # seconds
+        self.req_per_min = 60
         self.req_period = 15 # seconds
         self.req_per_period = 60 / (self.req_per_min / self.req_period)
         self.req_time_log = RingBuffer(self.req_per_period)
@@ -259,7 +259,7 @@ class Bitfinex(ExchangeApi):
         payload = {
             "currency": currency,
             "amount": str(amount),
-            "rate": str(lending_rate * 36500),
+            "rate": str(round(float(lending_rate),10) * 36500), 
             "period": int(duration),
             "direction": "lend"
         }
