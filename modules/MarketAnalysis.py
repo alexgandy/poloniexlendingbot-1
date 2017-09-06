@@ -147,7 +147,7 @@ class MarketAnalysis(object):
     def update_market_thread(self, cur, levels=None):
         """
         This is where the main work is done for recording the market data. The loop will not exit and continuously
-        polls Poloniex for the current loans in the book.
+        polls exchange for the current loans in the book.
 
         :param cur: The currency (database) to remove data from
         :param levels: The depth of offered rates to store
@@ -159,7 +159,7 @@ class MarketAnalysis(object):
             try:
                 raw_data = self.api.return_loan_orders(cur, levels)['offers']
             except Exception as ex:
-                self.print_traceback(ex, "Error in returning data from Poloniex")
+                self.print_traceback(ex, "Error in returning data from exchange")
             market_data = []
             for i in xrange(levels):
                 market_data.append(str(raw_data[i]['rate']))
