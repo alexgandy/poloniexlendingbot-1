@@ -222,9 +222,16 @@ class MarketAnalysis(object):
         price_levels = ['rate0']
         rates = self.get_rates_from_db(db_con, from_date=time.time() - request_seconds, price_levels=price_levels)
         df = pd.DataFrame(rates)
+
         columns = ['time']
         columns.extend(price_levels)
-        df.columns = columns
+        try:
+            df.columns = columns
+        except:
+            if self.ma_debug_log:
+                print("DEBUG:get_rate_list: cols: {0} rates:{1} db:{2}".format(columns, rates, db_con))
+            raise
+
         # convert unixtimes to datetimes so we can resample
         df.time = pd.to_datetime(df.time, unit='s')
         # If we don't have enough data return df, otherwise the resample will fill out all values with the same data.
@@ -265,7 +272,7 @@ class MarketAnalysis(object):
             if len(rates) == 0:
                 print("Rate list not populated")
                 if self.ma_debug_log:
-                    print("DEBUG: cur: {0} method:{1} rates:{2}")
+                    print("DEBUG:get_analysis_seconds: cur: {0} method:{1} rates:{2}".format(cur, method, rates))
                 return 0
             if self.ma_debug_log:
                 print("Cur:{0}, MACD:{1:.6f}, Perc:{2:.6f}, Best:{3:.6f}".format(cur, truncate(self.get_MACD_rate(cur, rates), 6),
